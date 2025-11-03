@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "752938708459",
+    "project_id": "dmd-project-7d5bc",
+    "storage_bucket": "dmd-project-7d5bc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:752938708459:android:ca472d83d15e442630bdae",
+        "android_client_info": {
+          "package_name": "com.example.mgt_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYpI9c4TN25wFc0zCcD2V8Jrz7lbAvx2k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
