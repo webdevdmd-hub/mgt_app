@@ -10,23 +10,18 @@ import '../../../../shared/widgets/status/status_badge.dart';
 import '../../../../shared/widgets/responsive/responsive_builder.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-final leadsCountProvider = StreamProvider<int>((ref) {
-  return FirebaseFirestore.instance
-      .collection('leads')
-      .snapshots()
-      .map((s) => s.size);
-});
-final projectsCountProvider = StreamProvider<int>((ref) {
-  return FirebaseFirestore.instance
-      .collection('projects')
-      .snapshots()
-      .map((s) => s.size);
-});
-final tasksCountProvider = StreamProvider<int>((ref) {
-  return FirebaseFirestore.instance
-      .collection('tasks')
-      .snapshots()
-      .map((s) => s.size);
+final filteredCountsProvider = StreamProvider.family<int, Map<String, String>>((ref, args) {
+  final collection = args['collection']!;
+  final role = args['role']!;
+  final uid = args['uid']!;
+
+  Query query = FirebaseFirestore.instance.collection(collection);
+
+  if (role != 'admin') {
+    query = query.where('createdBy', isEqualTo: uid);
+  }
+
+  return query.snapshots().map((s) => s.size);
 });
 
 String _formatDate(DateTime dt) {
@@ -56,16 +51,34 @@ DateTime? _toDate(dynamic v) {
   return null;
 }
 
-final recentActivityProvider = StreamProvider<List<Map<String, dynamic>>>((
-  ref,
-) {
-  // Leads
-  final leads$ = FirebaseFirestore.instance
+final recentActivityProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, Map<String, String>>(
+        (ref, args) {
+  final role = args['role']!;
+  final uid = args['uid']!;
+
+  Query<Map<String, dynamic>> leadsQuery = FirebaseFirestore.instance
       .collection('leads')
       .orderBy('createdAt', descending: true)
-      .limit(10)
-      .snapshots()
-      .map(
+      .limit(10);
+
+  Query<Map<String, dynamic>> projectsQuery = FirebaseFirestore.instance
+      .collection('projects')
+      .orderBy('createdAt', descending: true)
+      .limit(10);
+
+  Query<Map<String, dynamic>> tasksQuery = FirebaseFirestore.instance
+      .collection('tasks')
+      .orderBy('updatedAt', descending: true)
+      .limit(10);
+
+  if (role != 'admin') {
+    leadsQuery = leadsQuery.where('createdBy', isEqualTo: uid);
+    projectsQuery = projectsQuery.where('createdBy', isEqualTo: uid);
+    tasksQuery = tasksQuery.where('createdBy', isEqualTo: uid);
+  }
+
+  final leads$ = leadsQuery.snapshots().map(
         (s) => s.docs.map((d) {
           final data = d.data();
           return {
@@ -79,12 +92,7 @@ final recentActivityProvider = StreamProvider<List<Map<String, dynamic>>>((
       );
 
   // Projects
-  final projects$ = FirebaseFirestore.instance
-      .collection('projects')
-      .orderBy('createdAt', descending: true)
-      .limit(10)
-      .snapshots()
-      .map(
+  final projects$ = projectsQuery.snapshots().map(
         (s) => s.docs.map((d) {
           final data = d.data();
           // Support clientName or nested client.name, and optional code
@@ -119,12 +127,7 @@ final recentActivityProvider = StreamProvider<List<Map<String, dynamic>>>((
       );
 
   // Tasks
-  final tasks$ = FirebaseFirestore.instance
-      .collection('tasks')
-      .orderBy('updatedAt', descending: true) // prefer updated items
-      .limit(10)
-      .snapshots()
-      .map(
+  final tasks$ = tasksQuery.snapshots().map(
         (s) => s.docs.map((d) {
           final data = d.data();
           final isSubtask = data['parentId'] != null;
@@ -227,21 +230,30 @@ class UnifiedDashboardScreen extends ConsumerWidget {
     // Watch auth
     final user = ref.watch(currentUserProvider);
     final role = user?.role ?? 'admin';
+    final uid = user?.id ?? '';
 
-    // Watch counts
-    final leadsCount = ref
-        .watch(leadsCountProvider)
-        .maybeWhen(data: (v) => v, orElse: () => null);
-    final projectsCount = ref
-        .watch(projectsCountProvider)
-        .maybeWhen(data: (v) => v, orElse: () => null);
-    final tasksCount = ref
-        .watch(tasksCountProvider)
-        .maybeWhen(data: (v) => v, orElse: () => null);
+    final leadsCount = ref.watch(filteredCountsProvider({
+      'collection': 'leads',
+      'role': role,
+      'uid': uid,
+    })).maybeWhen(data: (v) => v, orElse: () => null);
 
-    final recentActivities = ref
-        .watch(recentActivityProvider)
-        .maybeWhen(
+    final projectsCount = ref.watch(filteredCountsProvider({
+      'collection': 'projects',
+      'role': role,
+      'uid': uid,
+    })).maybeWhen(data: (v) => v, orElse: () => null);
+
+    final tasksCount = ref.watch(filteredCountsProvider({
+      'collection': 'tasks',
+      'role': role,
+      'uid': uid,
+    })).maybeWhen(data: (v) => v, orElse: () => null);
+
+    final recentActivities = ref.watch(recentActivityProvider({
+      'role': role,
+      'uid': uid,
+    })).maybeWhen(
           data: (items) => items.map((m) {
             final type = (m['type'] as String?) ?? 'lead';
 
@@ -712,55 +724,56 @@ class UnifiedDashboardScreen extends ConsumerWidget {
     required int? projectsCount,
     required int? tasksCount,
   }) {
-    if (role == 'admin') {
-      return [
-        _StatItem(
-          title: 'Leads',
-          count: (leadsCount?.toString() ?? '—'),
-          icon: Icons.person_add_outlined,
-          color: AppColors.sales,
-          // onTap: () => GoRouter.of(context).go('/leads'),
-        ),
-        _StatItem(
-          title: 'Projects',
-          count: (projectsCount?.toString() ?? '—'),
-          icon: Icons.folder_outlined,
-          color: AppColors.primary,
-          // onTap: () => GoRouter.of(context).go('/projects'),
-        ),
-        _StatItem(
-          title: 'Tasks',
-          count: (tasksCount?.toString() ?? '—'),
-          icon: Icons.task_outlined,
-          color: AppColors.warning,
-          // onTap: () => GoRouter.of(context).go('/tasks'),
-        ),
-      ];
-    }
-    return [];
+    return [
+      _StatItem(
+        title: 'Leads',
+        count: (leadsCount?.toString() ?? '—'),
+        icon: Icons.person_add_outlined,
+        color: AppColors.sales,
+        // onTap: () => GoRouter.of(context).go('/leads'),
+      ),
+      _StatItem(
+        title: 'Projects',
+        count: (projectsCount?.toString() ?? '—'),
+        icon: Icons.folder_outlined,
+        color: AppColors.primary,
+        // onTap: () => GoRouter.of(context).go('/projects'),
+      ),
+      _StatItem(
+        title: 'Tasks',
+        count: (tasksCount?.toString() ?? '—'),
+        icon: Icons.task_outlined,
+        color: AppColors.warning,
+        // onTap: () => GoRouter.of(context).go('/tasks'),
+      ),
+    ];
   }
 
   List<_QuickAction> _getActionsForRole(BuildContext context, String role) {
+    final allActions = [
+      _QuickAction(
+        title: 'View Leads',
+        icon: Icons.people_outline,
+        color: AppColors.sales,
+        onTap: () => GoRouter.of(context).go('/leads'),
+      ),
+      _QuickAction(
+        title: 'View Projects',
+        icon: Icons.folder_outlined,
+        color: AppColors.primary,
+        onTap: () => GoRouter.of(context).go('/projects'),
+      ),
+      _QuickAction(
+        title: 'View Tasks',
+        icon: Icons.task_outlined,
+        color: AppColors.warning,
+        onTap: () => GoRouter.of(context).go('/tasks'),
+      ),
+    ];
+
     if (role == 'admin') {
       return [
-        _QuickAction(
-          title: 'View Leads',
-          icon: Icons.people_outline,
-          color: AppColors.sales,
-          onTap: () => GoRouter.of(context).go('/leads'),
-        ),
-        _QuickAction(
-          title: 'View Projects',
-          icon: Icons.folder_outlined,
-          color: AppColors.primary,
-          onTap: () => GoRouter.of(context).go('/projects'),
-        ),
-        _QuickAction(
-          title: 'View Tasks',
-          icon: Icons.task_outlined,
-          color: AppColors.warning,
-          onTap: () => GoRouter.of(context).go('/tasks'),
-        ),
+        ...allActions,
         _QuickAction(
           title: 'User Management',
           icon: Icons.verified_user_outlined,
@@ -775,8 +788,7 @@ class UnifiedDashboardScreen extends ConsumerWidget {
         // ),
       ];
     }
-    // ...other roles...
-    return [];
+    return allActions;
   }
 
   String _formatAgo(DateTime? dt) {

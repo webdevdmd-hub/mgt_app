@@ -38,7 +38,7 @@ class MyApp extends ConsumerWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      title: 'MGT App',
+      title: 'DMD APP',
       theme: ThemeData.light(),
     );
   }

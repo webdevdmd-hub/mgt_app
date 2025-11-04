@@ -136,6 +136,9 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
         widget.editLead?.id ?? 'lead_${DateTime.now().millisecondsSinceEpoch}';
 
     // Build the domain entity used by providers
+    final currentUser = ref.read(currentUserProvider);
+
+    // Build the domain entity used by providers
     final entity = LeadEntity(
       id: id,
       status: _status,
@@ -173,6 +176,7 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
       createdAt:
           widget.editLead?.createdAt ??
           _createdAt, // use the field to fix warning
+      createdBy: widget.editLead?.createdBy ?? currentUser?.id,
     );
 
     final notifier = ref.read(leadsProvider.notifier);

@@ -15,6 +15,7 @@ class ProjectEntity {
   final String? assignedTeam;
   final String? projectManager;
   final String? remarks;
+  final String? createdBy;
 
   ProjectEntity({
     String? id,
@@ -29,6 +30,7 @@ class ProjectEntity {
     this.assignedTeam,
     this.projectManager,
     this.remarks,
+    this.createdBy,
   }) : id = id ?? const Uuid().v4();
 
   ProjectEntity copyWith({
@@ -44,6 +46,7 @@ class ProjectEntity {
     String? assignedTeam,
     String? projectManager,
     String? remarks,
+    String? createdBy,
   }) {
     return ProjectEntity(
       id: id ?? this.id,
@@ -58,6 +61,7 @@ class ProjectEntity {
       assignedTeam: assignedTeam ?? this.assignedTeam,
       projectManager: projectManager ?? this.projectManager,
       remarks: remarks ?? this.remarks,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 
@@ -77,6 +81,7 @@ class ProjectEntity {
       assignedTeam: json['assignedTeam'] as String?,
       projectManager: json['projectManager'] as String?,
       remarks: json['remarks'] as String?,
+      createdBy: json['createdBy'] as String?,
     );
   }
 
@@ -94,6 +99,7 @@ class ProjectEntity {
       'assignedTeam': assignedTeam,
       'projectManager': projectManager,
       'remarks': remarks,
+      'createdBy': createdBy,
     };
   }
 

@@ -21,6 +21,7 @@ class LeadEntity {
   final bool isPublic;
   final bool contactedToday;
   final DateTime createdAt;
+  final String? createdBy;
 
   LeadEntity({
     required this.id,
@@ -45,6 +46,7 @@ class LeadEntity {
     this.isPublic = false,
     this.contactedToday = false,
     DateTime? createdAt,
+    this.createdBy,
   }) : createdAt = createdAt ?? DateTime.now();
 
   LeadEntity copyWith({
@@ -70,6 +72,7 @@ class LeadEntity {
     bool? isPublic,
     bool? contactedToday,
     DateTime? createdAt,
+    String? createdBy,
   }) {
     return LeadEntity(
       id: id ?? this.id,
@@ -94,6 +97,7 @@ class LeadEntity {
       isPublic: isPublic ?? this.isPublic,
       contactedToday: contactedToday ?? this.contactedToday,
       createdAt: createdAt ?? this.createdAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 
@@ -121,9 +125,8 @@ class LeadEntity {
       'description': description,
       'isPublic': isPublic,
       'contactedToday': contactedToday,
-      // Keep DateTime as ISO string at entity layer;
-      // Firestore conversion to Timestamp should be done in the repository.
       'createdAt': createdAt.toIso8601String(),
+      'createdBy': createdBy,
     };
   }
 
@@ -153,6 +156,7 @@ class LeadEntity {
       isPublic: (json['isPublic'] as bool?) ?? false,
       contactedToday: (json['contactedToday'] as bool?) ?? false,
       createdAt: _parseDate(json['createdAt']),
+      createdBy: json['createdBy'] as String?,
     );
   }
 }

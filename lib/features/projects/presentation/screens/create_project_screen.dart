@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/project_entity.dart';
 import '../providers/project_provider.dart';
 
@@ -101,6 +102,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
 
     setState(() => _isSaving = true);
 
+    final currentUser = ref.read(currentUserProvider);
     final budget = double.tryParse(_budgetCtrl.text.trim());
     final project = ProjectEntity(
       id: widget.editProject?.id ?? '',
@@ -121,6 +123,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
       remarks: _remarksCtrl.text.trim().isEmpty
           ? null
           : _remarksCtrl.text.trim(),
+      createdBy: widget.editProject?.createdBy ?? currentUser?.id,
     );
 
     final notifier = ref.read(projectsProvider.notifier);
