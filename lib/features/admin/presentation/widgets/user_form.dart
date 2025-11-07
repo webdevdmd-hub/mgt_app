@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/domain/entities/user_entity.dart';
+import 'feature_permission_editor.dart';
 
 class UserForm extends ConsumerStatefulWidget {
   // Accept optional params for editing
@@ -24,6 +26,7 @@ class _UserFormState extends ConsumerState<UserForm> {
   bool isActive = true;
   bool sendInvite = true;
   bool loading = false;
+  late UserPermissions permissions;
 
   static const roles = <String>[
     'admin',
@@ -46,7 +49,17 @@ class _UserFormState extends ConsumerState<UserForm> {
       role = (data['role'] ?? role).toString();
       isActive = (data['isActive'] as bool?) ?? true;
       sendInvite = false; // editing -> don't force invite
+
+      // Load permissions from data if available, otherwise use role-based defaults
+      if (data['permissions'] != null && data['permissions'] is Map) {
+        permissions = UserPermissions.fromJson(data['permissions'] as Map<String, dynamic>);
+      } else {
+        permissions = UserPermissions.forRole(role);
+      }
       // do NOT populate passwordCtrl for security
+    } else {
+      // New user - initialize with role-based permissions
+      permissions = UserPermissions.forRole(role);
     }
   }
 
@@ -141,7 +154,24 @@ class _UserFormState extends ConsumerState<UserForm> {
                   items: roles
                       .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                       .toList(),
-                  onChanged: (v) => setState(() => role = v ?? role),
+                  onChanged: (v) {
+                    setState(() {
+                      role = v ?? role;
+                      // Update permissions based on new role
+                      permissions = UserPermissions.forRole(role);
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Feature-based Permission Editor
+                FeaturePermissionEditor(
+                  initialPermissions: permissions,
+                  selectedRole: role,
+                  onPermissionsChanged: (newPermissions) {
+                    setState(() {
+                      permissions = newPermissions;
+                    });
+                  },
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(
@@ -210,6 +240,7 @@ class _UserFormState extends ConsumerState<UserForm> {
           'email': emailCtrl.text.trim(),
           'name': nameCtrl.text.trim(),
           'role': role,
+          'permissions': permissions.toJson(),
           'isActive': isActive,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -245,6 +276,7 @@ class _UserFormState extends ConsumerState<UserForm> {
           'email': emailCtrl.text.trim(),
           'name': nameCtrl.text.trim(),
           'role': role,
+          'permissions': permissions.toJson(),
           'isActive': isActive,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),

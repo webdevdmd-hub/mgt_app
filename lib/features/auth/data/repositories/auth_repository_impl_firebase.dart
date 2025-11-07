@@ -37,6 +37,14 @@ class AuthRepositoryImplFirebase implements AuthRepository {
 
       final role = (profile['role'] as String?)?.toLowerCase() ?? 'sales';
 
+      // Load permissions from Firestore if available, otherwise use role-based defaults
+      final UserPermissions permissions;
+      if (profile['permissions'] != null && profile['permissions'] is Map) {
+        permissions = UserPermissions.fromJson(profile['permissions'] as Map<String, dynamic>);
+      } else {
+        permissions = UserPermissions.forRole(role);
+      }
+
       return UserEntity(
         id: u.uid,
         name:
@@ -44,7 +52,7 @@ class AuthRepositoryImplFirebase implements AuthRepository {
             (u.displayName ?? (u.email ?? 'User')),
         email: u.email ?? '',
         role: role,
-        permissions: UserPermissions.forRole(role),
+        permissions: permissions,
         isActive: true,
         createdAt: u.metadata.creationTime,
         lastLogin: u.metadata.lastSignInTime,
@@ -122,12 +130,21 @@ class AuthRepositoryImplFirebase implements AuthRepository {
 
     final Map<String, dynamic> p = profile;
     final role = (p['role'] as String?)?.toLowerCase() ?? 'sales';
+
+    // Load permissions from Firestore if available, otherwise use role-based defaults
+    final UserPermissions permissions;
+    if (p['permissions'] != null && p['permissions'] is Map) {
+      permissions = UserPermissions.fromJson(p['permissions'] as Map<String, dynamic>);
+    } else {
+      permissions = UserPermissions.forRole(role);
+    }
+
     return UserEntity(
       id: u.uid,
       name: (p['name'] as String?) ?? (u.displayName ?? email),
       email: u.email ?? email,
       role: role,
-      permissions: UserPermissions.forRole(role),
+      permissions: permissions,
       isActive: true,
       createdAt: u.metadata.creationTime,
       lastLogin: u.metadata.lastSignInTime,
