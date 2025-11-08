@@ -2,7 +2,10 @@ class LeadEntity {
   final String id;
   final String status;
   final String? source;
-  final String? assignedTo;
+  final String? assignedTo; // User ID who this lead is assigned to
+  final String? assignedToName; // User Name (for display)
+  final String? assignedBy; // User ID who assigned this lead
+  final DateTime? assignedAt; // When the lead was assigned
   final List<String> tags;
   final String name;
   final String? position;
@@ -28,6 +31,9 @@ class LeadEntity {
     required this.status,
     this.source,
     this.assignedTo,
+    this.assignedToName,
+    this.assignedBy,
+    this.assignedAt,
     this.tags = const [],
     required this.name,
     this.position,
@@ -54,6 +60,9 @@ class LeadEntity {
     String? status,
     String? source,
     String? assignedTo,
+    String? assignedToName,
+    String? assignedBy,
+    DateTime? assignedAt,
     List<String>? tags,
     String? name,
     String? position,
@@ -79,6 +88,9 @@ class LeadEntity {
       status: status ?? this.status,
       source: source ?? this.source,
       assignedTo: assignedTo ?? this.assignedTo,
+      assignedToName: assignedToName ?? this.assignedToName,
+      assignedBy: assignedBy ?? this.assignedBy,
+      assignedAt: assignedAt ?? this.assignedAt,
       tags: tags ?? this.tags,
       name: name ?? this.name,
       position: position ?? this.position,
@@ -108,6 +120,9 @@ class LeadEntity {
       'status': status,
       'source': source,
       'assignedTo': assignedTo,
+      'assignedToName': assignedToName,
+      'assignedBy': assignedBy,
+      'assignedAt': assignedAt?.toIso8601String(),
       'tags': tags,
       'name': name,
       'position': position,
@@ -136,6 +151,9 @@ class LeadEntity {
       status: json['status'] as String,
       source: json['source'] as String?,
       assignedTo: json['assignedTo'] as String?,
+      assignedToName: json['assignedToName'] as String?,
+      assignedBy: json['assignedBy'] as String?,
+      assignedAt: _parseDate(json['assignedAt']),
       tags:
           (json['tags'] as List<dynamic>?)?.whereType<String>().toList() ??
           const [],

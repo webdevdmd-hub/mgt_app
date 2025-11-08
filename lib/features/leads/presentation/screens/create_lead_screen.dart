@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/leads_entity.dart';
 import '../providers/lead_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../auth/domain/entities/user_entity.dart';
+import '../../../../shared/widgets/inputs/user_selector.dart';
 
 /// A full-screen adder form. It uses the leadsProvider to save the lead.
 class CreateLeadScreen extends ConsumerStatefulWidget {
@@ -35,7 +35,11 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
 
   String _status = 'Open';
   String? _source;
-  UserEntity? _assigned;
+
+  // Assignment fields
+  String? _assignedTo; // User ID
+  String? _assignedToName; // User name for display
+
   List<String> _tags = [];
   String? _country;
   String _defaultLanguage = 'System Default';
@@ -88,6 +92,10 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
       _isPublic = e.isPublic;
       _contactedToday = e.contactedToday;
       _createdAt = e.createdAt;
+
+      // Load assignment data if editing
+      _assignedTo = e.assignedTo;
+      _assignedToName = e.assignedToName;
     }
   }
 
@@ -138,12 +146,22 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
     // Build the domain entity used by providers
     final currentUser = ref.read(currentUserProvider);
 
+    // Determine if this is a new assignment
+    final bool isNewAssignment = _assignedTo != null &&
+        (_assignedTo != widget.editLead?.assignedTo);
+
     // Build the domain entity used by providers
     final entity = LeadEntity(
       id: id,
       status: _status,
       source: _source,
-      assignedTo: _assigned?.name,
+
+      // Assignment fields
+      assignedTo: _assignedTo,
+      assignedToName: _assignedToName,
+      assignedBy: isNewAssignment ? currentUser?.id : widget.editLead?.assignedBy,
+      assignedAt: isNewAssignment ? DateTime.now() : widget.editLead?.assignedAt,
+
       tags: _tags,
       name: _nameCtrl.text.trim(),
       position: _positionCtrl.text.trim().isEmpty
@@ -187,6 +205,30 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
     }
 
     Navigator.of(context).pop(entity); // return LeadEntity
+  }
+
+  // Assignment selector widget
+  Widget _buildAssigneeSelector() {
+    final currentUser = ref.watch(currentUserProvider);
+    final userRole = currentUser?.role;
+
+    // Sales managers can assign to sales executives
+    String? roleFilter;
+    if (userRole == 'sales manager') {
+      roleFilter = 'sales executive';
+    }
+
+    return UserSelector(
+      selectedUserId: _assignedTo,
+      onUserSelected: (userId, userName) {
+        setState(() {
+          _assignedTo = userId;
+          _assignedToName = userName;
+        });
+      },
+      filterRole: roleFilter,
+      label: 'Assign To',
+    );
   }
 
   Widget _buildTextField(
@@ -283,8 +325,6 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final users = ref.watch(usersProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.editLead != null ? 'Edit Lead' : 'Add new lead'),
@@ -359,33 +399,7 @@ class _CreateLeadScreenState extends ConsumerState<CreateLeadScreen> {
                           required: true,
                         ),
                         const SizedBox(height: 12),
-                        users.when(
-                          data: (data) {
-                            return DropdownButtonFormField<UserEntity>(
-                              initialValue: _assigned,
-                              decoration: const InputDecoration(
-                                labelText: 'Assigned',
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                                floatingLabelBehavior: FloatingLabelBehavior.always,
-                              ),
-                              hint: const Text('Nothing selected'),
-                              items: data.map((user) {
-                                return DropdownMenuItem<UserEntity>(
-                                  value: user,
-                                  child: Text(user.name),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _assigned = value;
-                                });
-                              },
-                            );
-                          },
-                          loading: () => const CircularProgressIndicator(),
-                          error: (error, stackTrace) => const Text('Error loading users'),
-                        ),
+                        _buildAssigneeSelector(),
                         const SizedBox(height: 12),
                         // Tags section...
                         Column(

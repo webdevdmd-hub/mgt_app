@@ -152,10 +152,10 @@ class _TaskDetailsBottomSheetState
                   runSpacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    if (task.assigneeName != null)
+                    if (task.assignedToName != null)
                       _chip(
                         icon: Icons.person_outline,
-                        label: task.assigneeName!,
+                        label: task.assignedToName!,
                         color: Colors.purple,
                       ),
                     _chip(

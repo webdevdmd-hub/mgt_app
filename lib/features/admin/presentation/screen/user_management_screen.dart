@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/user_form.dart';
 import 'package:go_router/go_router.dart';
+
 class UserManagementScreen extends ConsumerStatefulWidget {
   const UserManagementScreen({super.key});
 
@@ -48,7 +49,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             context.go('/dashboard');
           },
         ),
-        title: const Text('User Management'), centerTitle: false),
+        title: const Text('User Management'),
+        centerTitle: false,
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await showModalBottomSheet(
@@ -249,7 +252,18 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     final messenger = ScaffoldMessenger.of(context);
 
     final availableRoles = _UserManagementScreenState.roles;
+
+    // Handle backward compatibility: map old "sales" role to "sales executive"
     String selected = currentRole;
+    if (currentRole == 'sales') {
+      selected = 'sales executive';
+    }
+
+    // Ensure selected role exists in availableRoles, otherwise default to first role
+    if (!availableRoles.contains(selected)) {
+      selected = availableRoles.first;
+    }
+
     final res = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -260,7 +274,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             items: availableRoles
                 .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                 .toList(),
-            onChanged: (v) => setState(() => selected = v ?? currentRole),
+            onChanged: (v) => setState(() => selected = v ?? selected),
           ),
         ),
         actions: [

@@ -22,7 +22,7 @@ class _UserFormState extends ConsumerState<UserForm> {
   final nameCtrl = TextEditingController();
   final passwordCtrl = TextEditingController(); // new
 
-  String role = 'sales';
+  String role = 'sales executive';
   bool isActive = true;
   bool sendInvite = true;
   bool loading = false;
@@ -30,13 +30,14 @@ class _UserFormState extends ConsumerState<UserForm> {
 
   static const roles = <String>[
     'admin',
+    'sales manager',
+    'sales executive',
     'estimation',
     'accounts',
     'store',
     'production',
     'delivery',
     'marketing',
-    'sales',
   ];
 
   @override
@@ -46,7 +47,14 @@ class _UserFormState extends ConsumerState<UserForm> {
     if (data != null) {
       nameCtrl.text = (data['name'] ?? '').toString();
       emailCtrl.text = (data['email'] ?? '').toString();
-      role = (data['role'] ?? role).toString();
+
+      // Handle backward compatibility: map old "sales" role to "sales executive"
+      String userRole = (data['role'] ?? role).toString();
+      if (userRole == 'sales') {
+        userRole = 'sales executive';
+      }
+      role = userRole;
+
       isActive = (data['isActive'] as bool?) ?? true;
       sendInvite = false; // editing -> don't force invite
 
@@ -145,23 +153,38 @@ class _UserFormState extends ConsumerState<UserForm> {
                 ],
 
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: role,
-                  decoration: const InputDecoration(
-                    labelText: 'Role',
-                    prefixIcon: Icon(Icons.badge_outlined),
+                // Show role dropdown only when creating new user
+                // For editing, use "Change role" from the popup menu instead
+                if (!isEditing)
+                  DropdownButtonFormField<String>(
+                    initialValue: role,
+                    decoration: const InputDecoration(
+                      labelText: 'Role',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                    items: roles
+                        .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                        .toList(),
+                    onChanged: (v) {
+                      setState(() {
+                        role = v ?? role;
+                        // Update permissions based on new role
+                        permissions = UserPermissions.forRole(role);
+                      });
+                    },
                   ),
-                  items: roles
-                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                      .toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      role = v ?? role;
-                      // Update permissions based on new role
-                      permissions = UserPermissions.forRole(role);
-                    });
-                  },
-                ),
+                // Show current role as read-only when editing
+                if (isEditing)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.badge_outlined),
+                    title: const Text('Role'),
+                    subtitle: Text(role),
+                    trailing: const Text(
+                      'Use "Change role" option',
+                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 // Feature-based Permission Editor
                 FeaturePermissionEditor(

@@ -17,9 +17,16 @@ final filteredCountsProvider = StreamProvider.family<int, Map<String, String>>((
 
   Query query = FirebaseFirestore.instance.collection(collection);
 
-  if (role != 'admin') {
+  // Role-based filtering:
+  // - Sales executives see only items assigned to them
+  // - Sales managers see items they created
+  // - Admins see everything
+  if (role.toLowerCase() == 'sales executive') {
+    query = query.where('assignedTo', isEqualTo: uid);
+  } else if (role.toLowerCase() == 'sales manager') {
     query = query.where('createdBy', isEqualTo: uid);
   }
+  // Admin sees all (no filter)
 
   return query.snapshots().map((s) => s.size);
 });
@@ -72,11 +79,20 @@ final recentActivityProvider =
       .orderBy('updatedAt', descending: true)
       .limit(10);
 
-  if (role != 'admin') {
+  // Role-based filtering:
+  // - Sales executives see only items assigned to them
+  // - Sales managers see items they created
+  // - Admins see everything
+  if (role.toLowerCase() == 'sales executive') {
+    leadsQuery = leadsQuery.where('assignedTo', isEqualTo: uid);
+    projectsQuery = projectsQuery.where('assignedTo', isEqualTo: uid);
+    tasksQuery = tasksQuery.where('assignedTo', isEqualTo: uid);
+  } else if (role.toLowerCase() == 'sales manager') {
     leadsQuery = leadsQuery.where('createdBy', isEqualTo: uid);
     projectsQuery = projectsQuery.where('createdBy', isEqualTo: uid);
     tasksQuery = tasksQuery.where('createdBy', isEqualTo: uid);
   }
+  // Admin sees all (no filter)
 
   final leads$ = leadsQuery.snapshots().map(
         (s) => s.docs.map((d) {

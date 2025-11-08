@@ -69,8 +69,10 @@ class TaskEntity {
   final String? linkedType; // 'project' | 'enquiry' | null
 
   // Assignment
-  final String? assigneeId; // User ID
-  final String? assigneeName; // User Name (for display)
+  final String? assignedTo; // User ID who this task is assigned to
+  final String? assignedToName; // User Name (for display)
+  final String? assignedBy; // User ID who assigned this task
+  final DateTime? assignedAt; // When the task was assigned
   final String department; // Which department owns this task
 
   // Dates
@@ -98,8 +100,10 @@ class TaskEntity {
     this.linkedId,
     this.parentId,
     this.linkedType,
-    this.assigneeId,
-    this.assigneeName,
+    this.assignedTo,
+    this.assignedToName,
+    this.assignedBy,
+    this.assignedAt,
     this.department = 'general',
     this.dueDate,
     required this.createdAt,
@@ -121,8 +125,10 @@ class TaskEntity {
     String? linkedId,
     String? parentId,
     String? linkedType,
-    String? assigneeId,
-    String? assigneeName,
+    String? assignedTo,
+    String? assignedToName,
+    String? assignedBy,
+    DateTime? assignedAt,
     String? department,
     DateTime? dueDate,
     DateTime? createdAt,
@@ -143,8 +149,10 @@ class TaskEntity {
       linkedId: linkedId,
       parentId: parentId,
       linkedType: linkedType,
-      assigneeId: assigneeId ?? this.assigneeId,
-      assigneeName: assigneeName ?? this.assigneeName,
+      assignedTo: assignedTo ?? this.assignedTo,
+      assignedToName: assignedToName ?? this.assignedToName,
+      assignedBy: assignedBy ?? this.assignedBy,
+      assignedAt: assignedAt ?? this.assignedAt,
       department: department ?? this.department,
       dueDate: dueDate ?? this.dueDate,
       createdAt: createdAt ?? this.createdAt,
@@ -168,8 +176,10 @@ class TaskEntity {
       'linkedId': linkedId,
       'parentId': parentId,
       'linkedType': linkedType,
-      'assigneeId': assigneeId,
-      'assigneeName': assigneeName,
+      'assignedTo': assignedTo,
+      'assignedToName': assignedToName,
+      'assignedBy': assignedBy,
+      'assignedAt': assignedAt?.toIso8601String(),
       'department': department,
       'dueDate': dueDate?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
@@ -192,8 +202,12 @@ class TaskEntity {
       parentId: json['parentId'] as String?,
       linkedId: json['linkedId'] as String?,
       linkedType: json['linkedType'] as String?,
-      assigneeId: json['assigneeId'] as String?,
-      assigneeName: json['assigneeName'] as String?,
+      assignedTo: json['assignedTo'] as String?,
+      assignedToName: json['assignedToName'] as String?,
+      assignedBy: json['assignedBy'] as String?,
+      assignedAt: json['assignedAt'] != null
+          ? DateTime.tryParse(json['assignedAt'] as String)
+          : null,
       department: json['department'] as String? ?? 'general',
       dueDate: json['dueDate'] != null
           ? DateTime.tryParse(json['dueDate'] as String)
@@ -237,12 +251,12 @@ class TaskEntity {
 
   // Check if task can be started (for permission checking)
   bool canBeStarted(String userId) {
-    return assigneeId == userId && status == TaskStatus.pending;
+    return assignedTo == userId && status == TaskStatus.pending;
   }
 
   // Check if task can be completed
   bool canBeCompleted(String userId) {
-    return assigneeId == userId && status == TaskStatus.inProgress;
+    return assignedTo == userId && status == TaskStatus.inProgress;
   }
 
   // Get days until due

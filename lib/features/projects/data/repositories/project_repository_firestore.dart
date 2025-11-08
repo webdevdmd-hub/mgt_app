@@ -18,10 +18,30 @@ class ProjectRepositoryFirestore {
   fs.CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection(collectionPath);
 
-  Stream<List<ProjectEntity>> watchProjects({String? status, String? leadId}) {
+  Stream<List<ProjectEntity>> watchProjects({
+    String? status,
+    String? leadId,
+    String? currentUserId,
+    String? userRole,
+  }) {
     fs.Query<Map<String, dynamic>> q = _col;
+
+    // Apply role-based filtering first
+    if (currentUserId != null && userRole != null) {
+      if (userRole.toLowerCase() == 'sales executive') {
+        // Sales executives see only projects assigned to them
+        q = q.where('assignedTo', isEqualTo: currentUserId);
+      } else if (userRole.toLowerCase() == 'sales manager') {
+        // Sales managers see projects they created
+        q = q.where('createdBy', isEqualTo: currentUserId);
+      }
+      // Admin sees all (no filter)
+    }
+
+    // Additional filters
     if (status != null) q = q.where('status', isEqualTo: status);
     if (leadId != null) q = q.where('leadId', isEqualTo: leadId);
+
     q = q.orderBy('startDate', descending: true);
 
     return q.snapshots().map(
@@ -92,6 +112,11 @@ class ProjectRepositoryFirestore {
       assignedTeam: m['assignedTeam'] as String?,
       projectManager: m['projectManager'] as String?,
       remarks: m['remarks'] as String?,
+      createdBy: m['createdBy'] as String?,
+      assignedTo: m['assignedTo'] as String?,
+      assignedToName: m['assignedToName'] as String?,
+      assignedBy: m['assignedBy'] as String?,
+      assignedAt: _toDate(m['assignedAt']),
     );
   }
 
@@ -110,6 +135,11 @@ class ProjectRepositoryFirestore {
       'assignedTeam': p.assignedTeam,
       'projectManager': p.projectManager,
       'remarks': p.remarks,
+      'createdBy': p.createdBy,
+      'assignedTo': p.assignedTo,
+      'assignedToName': p.assignedToName,
+      'assignedBy': p.assignedBy,
+      'assignedAt': p.assignedAt,
     };
     return _pruneNulls(map);
   }

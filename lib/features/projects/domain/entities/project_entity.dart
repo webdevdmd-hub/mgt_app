@@ -17,6 +17,12 @@ class ProjectEntity {
   final String? remarks;
   final String? createdBy;
 
+  // Assignment tracking
+  final String? assignedTo; // User ID who this project is assigned to
+  final String? assignedToName; // User Name (for display)
+  final String? assignedBy; // User ID who assigned this project
+  final DateTime? assignedAt; // When the project was assigned
+
   ProjectEntity({
     String? id,
     required this.name,
@@ -31,6 +37,10 @@ class ProjectEntity {
     this.projectManager,
     this.remarks,
     this.createdBy,
+    this.assignedTo,
+    this.assignedToName,
+    this.assignedBy,
+    this.assignedAt,
   }) : id = id ?? const Uuid().v4();
 
   ProjectEntity copyWith({
@@ -47,6 +57,10 @@ class ProjectEntity {
     String? projectManager,
     String? remarks,
     String? createdBy,
+    String? assignedTo,
+    String? assignedToName,
+    String? assignedBy,
+    DateTime? assignedAt,
   }) {
     return ProjectEntity(
       id: id ?? this.id,
@@ -62,6 +76,10 @@ class ProjectEntity {
       projectManager: projectManager ?? this.projectManager,
       remarks: remarks ?? this.remarks,
       createdBy: createdBy ?? this.createdBy,
+      assignedTo: assignedTo ?? this.assignedTo,
+      assignedToName: assignedToName ?? this.assignedToName,
+      assignedBy: assignedBy ?? this.assignedBy,
+      assignedAt: assignedAt ?? this.assignedAt,
     );
   }
 
@@ -82,6 +100,10 @@ class ProjectEntity {
       projectManager: json['projectManager'] as String?,
       remarks: json['remarks'] as String?,
       createdBy: json['createdBy'] as String?,
+      assignedTo: json['assignedTo'] as String?,
+      assignedToName: json['assignedToName'] as String?,
+      assignedBy: json['assignedBy'] as String?,
+      assignedAt: _parseDate(json['assignedAt']),
     );
   }
 
@@ -100,6 +122,10 @@ class ProjectEntity {
       'projectManager': projectManager,
       'remarks': remarks,
       'createdBy': createdBy,
+      'assignedTo': assignedTo,
+      'assignedToName': assignedToName,
+      'assignedBy': assignedBy,
+      'assignedAt': assignedAt?.toIso8601String(),
     };
   }
 

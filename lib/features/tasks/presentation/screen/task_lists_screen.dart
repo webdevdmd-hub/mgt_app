@@ -77,7 +77,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
     list = list.where((t) {
       if (q.isEmpty) return true;
       return t.title.toLowerCase().contains(q) ||
-          (t.assigneeName?.toLowerCase().contains(q) ?? false) ||
+          (t.assignedToName?.toLowerCase().contains(q) ?? false) ||
           (t.tags.join(' ').toLowerCase().contains(q));
     }).toList();
 

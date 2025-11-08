@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/task_entity.dart'; // use domain entity
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../presentation/providers/tasks_providers.dart';
-import '../../../auth/domain/entities/user_entity.dart';
+import '../../../../shared/widgets/inputs/user_selector.dart';
 
 class CreateTaskScreen extends ConsumerStatefulWidget {
   final TaskEntity? editTask; // was: Task? editTask
@@ -27,7 +27,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final TextEditingController _desc = TextEditingController();
   final TextEditingController _tags = TextEditingController();
 
-  UserEntity? _assignee;
+  // Assignment fields
+  String? _assignedTo; // User ID
+  String? _assignedToName; // User name for display
+
   TaskPriority _priority = TaskPriority.medium;
   TaskStatus _status = TaskStatus.pending;
   DateTime? _due;
@@ -50,6 +53,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
       _due = t.dueDate;
 
       _timeSpentSec = t.timeSpentSec;
+
+      // Load assignment data if editing
+      _assignedTo = t.assignedTo;
+      _assignedToName = t.assignedToName;
     }
   }
 
@@ -118,17 +125,26 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    // Get current user for 'createdBy' field
+    // Get current user for 'createdBy' and 'assignedBy' fields
     final currentUser = ref.read(currentUserProvider);
+
+    // Determine if this is a new assignment (assigning for first time or changing assignee)
+    final bool isNewAssignment = _assignedTo != null &&
+        (_assignedTo != widget.editTask?.assignedTo);
 
     final id =
         widget.editTask?.id ?? 'task_${DateTime.now().millisecondsSinceEpoch}';
     final task = TaskEntity(
-      // was: Task(...)
       id: id,
       title: _title.text.trim(),
       description: _desc.text.trim().isEmpty ? null : _desc.text.trim(),
-      assigneeName: _assignee?.name,
+
+      // Assignment fields
+      assignedTo: _assignedTo,
+      assignedToName: _assignedToName,
+      assignedBy: isNewAssignment ? currentUser?.id : widget.editTask?.assignedBy,
+      assignedAt: isNewAssignment ? DateTime.now() : widget.editTask?.assignedAt,
+
       dueDate: _due,
       createdAt: widget.editTask?.createdAt ?? DateTime.now(),
       // Link to module if provided
@@ -146,7 +162,6 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
                 .map((s) => s.trim())
                 .where((s) => s.isNotEmpty)
                 .toList(),
-      // linkedId, linkedType, department, attachments, createdBy, notes can be added later if needed
     );
 
     final notifier = ref.read(tasksProvider.notifier);
@@ -496,35 +511,27 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   }
 
   Widget _buildAssigneeDropdown() {
-    final users = ref.watch(usersProvider);
-    return users.when(
-      data: (data) {
-        return DropdownButtonFormField<UserEntity>(
-          initialValue: _assignee,
-          decoration: InputDecoration(
-            prefixIcon: Icon(Icons.person_outline, color: Colors.deepPurple.shade300, size: 22),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-          ),
-          hint: const Text('Assign to team member'),
-          items: data.map((user) {
-            return DropdownMenuItem<UserEntity>(
-              value: user,
-              child: Text(user.name),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _assignee = value;
-            });
-          },
-        );
+    // Get current user to determine their role
+    final currentUser = ref.watch(currentUserProvider);
+    final userRole = currentUser?.role;
+
+    // Sales managers can assign to sales executives
+    // Admins can assign to anyone
+    String? roleFilter;
+    if (userRole == 'sales manager') {
+      roleFilter = 'sales executive';
+    }
+
+    return UserSelector(
+      selectedUserId: _assignedTo,
+      onUserSelected: (userId, userName) {
+        setState(() {
+          _assignedTo = userId;
+          _assignedToName = userName;
+        });
       },
-      loading: () => const CircularProgressIndicator(),
-      error: (error, stackTrace) => const Text('Error loading users'),
+      filterRole: roleFilter,
+      label: 'Assign To',
     );
   }
 

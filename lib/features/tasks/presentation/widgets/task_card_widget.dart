@@ -56,7 +56,7 @@ class _TaskCardWidgetState extends ConsumerState<TaskCardWidget> {
               ],
 
               // Details Row
-              if (task.assigneeName != null || task.dueDate != null) ...[
+              if (task.assignedToName != null || task.dueDate != null) ...[
                 const SizedBox(height: 12),
                 _buildDetailsRow(task),
               ],
@@ -277,7 +277,7 @@ class _TaskCardWidgetState extends ConsumerState<TaskCardWidget> {
   Widget _buildDetailsRow(TaskEntity task) {
     return Row(
       children: [
-        if (task.assigneeName != null) ...[
+        if (task.assignedToName != null) ...[
           _buildAssigneeChip(task),
           const SizedBox(width: 8),
         ],
@@ -433,7 +433,7 @@ class _TaskCardWidgetState extends ConsumerState<TaskCardWidget> {
           Icon(Icons.person_outline, size: 14, color: Colors.purple.shade700),
           const SizedBox(width: 6),
           Text(
-            task.assigneeName!,
+            task.assignedToName!,
             style: TextStyle(
               fontSize: 12,
               color: Colors.purple.shade700,

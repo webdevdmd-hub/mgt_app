@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/project_entity.dart';
 import '../providers/project_provider.dart';
+import '../../../../shared/widgets/inputs/user_selector.dart';
 
 class CreateProjectScreen extends ConsumerStatefulWidget {
   final ProjectEntity? editProject;
@@ -30,6 +31,10 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
 
+  // Assignment fields
+  String? _assignedTo; // User ID
+  String? _assignedToName; // User name for display
+
   bool _isSaving = false;
 
   final List<String> _statusOptions = [
@@ -55,6 +60,10 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
       _assignedTeamCtrl.text = p.assignedTeam ?? '';
       _projectManagerCtrl.text = p.projectManager ?? '';
       _remarksCtrl.text = p.remarks ?? '';
+
+      // Load assignment data if editing
+      _assignedTo = p.assignedTo;
+      _assignedToName = p.assignedToName;
     }
   }
 
@@ -104,6 +113,11 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
 
     final currentUser = ref.read(currentUserProvider);
     final budget = double.tryParse(_budgetCtrl.text.trim());
+
+    // Determine if this is a new assignment
+    final bool isNewAssignment = _assignedTo != null &&
+        (_assignedTo != widget.editProject?.assignedTo);
+
     final project = ProjectEntity(
       id: widget.editProject?.id ?? '',
       name: _nameCtrl.text.trim(),
@@ -124,6 +138,12 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
           ? null
           : _remarksCtrl.text.trim(),
       createdBy: widget.editProject?.createdBy ?? currentUser?.id,
+
+      // Assignment fields
+      assignedTo: _assignedTo,
+      assignedToName: _assignedToName,
+      assignedBy: isNewAssignment ? currentUser?.id : widget.editProject?.assignedBy,
+      assignedAt: isNewAssignment ? DateTime.now() : widget.editProject?.assignedAt,
     );
 
     final notifier = ref.read(projectsProvider.notifier);
@@ -225,6 +245,8 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 20),
+                _buildAssigneeSelector(),
+                const SizedBox(height: 20),
                 _buildStyledTextField(
                   _assignedTeamCtrl,
                   'Assigned Team',
@@ -283,6 +305,30 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // Assignment selector widget
+  Widget _buildAssigneeSelector() {
+    final currentUser = ref.watch(currentUserProvider);
+    final userRole = currentUser?.role;
+
+    // Sales managers can assign to sales executives
+    String? roleFilter;
+    if (userRole == 'sales manager') {
+      roleFilter = 'sales executive';
+    }
+
+    return UserSelector(
+      selectedUserId: _assignedTo,
+      onUserSelected: (userId, userName) {
+        setState(() {
+          _assignedTo = userId;
+          _assignedToName = userName;
+        });
+      },
+      filterRole: roleFilter,
+      label: 'Assign To',
     );
   }
 

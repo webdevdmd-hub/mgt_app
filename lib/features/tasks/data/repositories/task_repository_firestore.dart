@@ -13,12 +13,34 @@ class TasksRepositoryFirestore {
   fs.CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection(collectionPath);
 
-  // STREAM all tasks (optionally scope by projectId)
-  Stream<List<TaskEntity>> watchTasks({String? projectId}) {
+  // STREAM all tasks with role-based filtering
+  // - Admin: sees all tasks
+  // - Sales Manager: sees tasks they created
+  // - Sales Executive: sees only tasks assigned to them
+  Stream<List<TaskEntity>> watchTasks({
+    String? projectId,
+    String? currentUserId,
+    String? userRole,
+  }) {
     fs.Query<Map<String, dynamic>> q = _col;
+
+    // Filter by project if specified
     if (projectId != null) {
-      q = q.where('projectId', isEqualTo: projectId);
+      q = q.where('linkedId', isEqualTo: projectId);
     }
+
+    // Apply role-based filtering
+    if (currentUserId != null && userRole != null) {
+      if (userRole.toLowerCase() == 'sales executive') {
+        // Sales executives see only tasks assigned to them
+        q = q.where('assignedTo', isEqualTo: currentUserId);
+      } else if (userRole.toLowerCase() == 'sales manager') {
+        // Sales managers see tasks they created
+        q = q.where('createdBy', isEqualTo: currentUserId);
+      }
+      // Admin sees all (no filter)
+    }
+
     return q
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -55,8 +77,10 @@ class TasksRepositoryFirestore {
       parentId: m['parentId'] as String?,
       linkedId: m['linkedId'] as String?,
       linkedType: m['linkedType'] as String?,
-      assigneeId: m['assigneeId'] as String?,
-      assigneeName: m['assigneeName'] as String?,
+      assignedTo: m['assignedTo'] as String?,
+      assignedToName: m['assignedToName'] as String?,
+      assignedBy: m['assignedBy'] as String?,
+      assignedAt: _toDate(m['assignedAt']),
       department: (m['department'] as String?) ?? 'general',
       dueDate: _toDate(m['dueDate']),
       createdAt: _toDate(m['createdAt']) ?? DateTime.now(),
@@ -80,8 +104,10 @@ class TasksRepositoryFirestore {
       'parentId': t.parentId,
       'linkedId': t.linkedId,
       'linkedType': t.linkedType,
-      'assigneeId': t.assigneeId,
-      'assigneeName': t.assigneeName,
+      'assignedTo': t.assignedTo,
+      'assignedToName': t.assignedToName,
+      'assignedBy': t.assignedBy,
+      'assignedAt': t.assignedAt != null ? fs.Timestamp.fromDate(t.assignedAt!) : null,
       'department': t.department,
       'dueDate': t.dueDate != null ? fs.Timestamp.fromDate(t.dueDate!) : null,
       'createdAt': fs.Timestamp.fromDate(t.createdAt),

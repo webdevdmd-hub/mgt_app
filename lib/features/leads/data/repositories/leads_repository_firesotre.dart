@@ -26,9 +26,24 @@ class LeadsRepositoryFirestore {
     String? source,
     bool? isPublic,
     bool? contactedToday,
+    String? currentUserId,
+    String? userRole,
   }) {
     fs.Query<Map<String, dynamic>> q = _col;
 
+    // Apply role-based filtering first
+    if (currentUserId != null && userRole != null && assignedTo == null) {
+      if (userRole.toLowerCase() == 'sales executive') {
+        // Sales executives see only leads assigned to them
+        q = q.where('assignedTo', isEqualTo: currentUserId);
+      } else if (userRole.toLowerCase() == 'sales manager') {
+        // Sales managers see leads they created
+        q = q.where('createdBy', isEqualTo: currentUserId);
+      }
+      // Admin sees all (no filter)
+    }
+
+    // Additional filters
     if (status != null) q = q.where('status', isEqualTo: status);
     if (assignedTo != null) q = q.where('assignedTo', isEqualTo: assignedTo);
     if (source != null) q = q.where('source', isEqualTo: source);
@@ -103,6 +118,9 @@ class LeadsRepositoryFirestore {
       status: (m['status'] as String?) ?? '',
       source: m['source'] as String?,
       assignedTo: m['assignedTo'] as String?,
+      assignedToName: m['assignedToName'] as String?,
+      assignedBy: m['assignedBy'] as String?,
+      assignedAt: _toDate(m['assignedAt']),
       tags:
           (m['tags'] as List<dynamic>?)?.whereType<String>().toList() ??
           const [],
@@ -123,6 +141,7 @@ class LeadsRepositoryFirestore {
       isPublic: (m['isPublic'] as bool?) ?? false,
       contactedToday: (m['contactedToday'] as bool?) ?? false,
       createdAt: _toDate(m['createdAt']) ?? DateTime.now(),
+      createdBy: m['createdBy'] as String?,
     );
   }
 
@@ -132,6 +151,9 @@ class LeadsRepositoryFirestore {
       'status': l.status,
       'source': l.source,
       'assignedTo': l.assignedTo,
+      'assignedToName': l.assignedToName,
+      'assignedBy': l.assignedBy,
+      'assignedAt': l.assignedAt != null ? fs.Timestamp.fromDate(l.assignedAt!) : null,
       'tags': l.tags,
       'name': l.name,
       'nameLower': l.name.toLowerCase(),
@@ -151,6 +173,7 @@ class LeadsRepositoryFirestore {
       'isPublic': l.isPublic,
       'contactedToday': l.contactedToday,
       'createdAt': fs.Timestamp.fromDate(l.createdAt),
+      'createdBy': l.createdBy,
     };
     return _pruneNulls(map);
   }
