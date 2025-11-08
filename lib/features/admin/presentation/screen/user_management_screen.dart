@@ -17,13 +17,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
 
   static const roles = <String>[
     'admin',
+    'sales manager',
+    'sales executive',
     'estimation',
     'accounts',
     'store',
     'production',
     'delivery',
     'marketing',
-    'sales',
   ];
 
   @override

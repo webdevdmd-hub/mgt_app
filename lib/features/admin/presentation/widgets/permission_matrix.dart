@@ -26,13 +26,26 @@ enum Permission {
 /// Default permission sets per role. Keys are case-insensitive role names.
 final Map<String, Set<Permission>> defaultRolePermissions = {
   'admin': Permission.values.toSet(),
-  'sales': {
+  'sales executive': {
     Permission.viewDashboard,
     Permission.viewLeads,
     Permission.createLeads,
     Permission.viewProjects,
     Permission.viewTasks,
     Permission.createTasks,
+  },
+  'sales manager': {
+    Permission.viewDashboard,
+    Permission.viewLeads,
+    Permission.createLeads,
+    Permission.editLeads,
+    Permission.viewProjects,
+    Permission.createProjects,
+    Permission.editProjects,
+    Permission.viewTasks,
+    Permission.createTasks,
+    Permission.editTasks,
+    Permission.exportData,
   },
   'marketing': {
     Permission.viewDashboard,

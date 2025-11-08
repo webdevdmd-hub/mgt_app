@@ -17,7 +17,7 @@ class UserEntity {
     required this.id,
     required this.name,
     required this.email,
-    this.role = 'sales',
+    this.role = 'sales executive',
     required this.permissions,
     this.isActive = true,
     this.phone,
@@ -27,7 +27,7 @@ class UserEntity {
   });
 
   factory UserEntity.fromJson(Map<String, dynamic> json) {
-    final role = json['role'] as String? ?? 'sales';
+    final role = json['role'] as String? ?? 'sales executive';
 
     // If permissions are stored in Firestore, use them
     // Otherwise fall back to role-based permissions for backward compatibility
@@ -119,8 +119,11 @@ class UserPermissions {
     switch (role.toLowerCase()) {
       case 'admin':
         return UserPermissions.admin();
-      case 'sales':
+      case 'sales executive':
+      case 'sales':  // backward compatibility
         return UserPermissions.sales();
+      case 'sales manager':
+        return UserPermissions.salesManager();
       case 'marketing':
         return UserPermissions.marketing();
       case 'production':
@@ -175,6 +178,26 @@ class UserPermissions {
       canCreateTasks: true,
       canEditTasks: true,
       canDeleteTasks: false,
+    );
+  }
+
+  factory UserPermissions.salesManager() {
+    return const UserPermissions(
+      canViewDashboard: true,
+      canViewLeads: true,
+      canCreateLeads: true,
+      canEditLeads: true,
+      canDeleteLeads: true,
+      canViewProjects: true,
+      canCreateProjects: true,
+      canEditProjects: true,
+      canDeleteProjects: false,
+      canViewTasks: true,
+      canCreateTasks: true,
+      canEditTasks: true,
+      canDeleteTasks: true,
+      canManageUsers: false,
+      canExportData: true,
     );
   }
 
