@@ -8,6 +8,9 @@ import '../../../../shared/widgets/app_bar/custom_app_bar.dart';
 import '../../../../shared/widgets/navigation/custom_drawer.dart';
 import '../../../../shared/widgets/status/status_badge.dart';
 import '../../../../shared/widgets/responsive/responsive_builder.dart';
+import '../../../../shared/widgets/cards/glassmorphic_card.dart';
+import '../../../../shared/widgets/cards/horizontal_card_scroller.dart';
+import '../../../../shared/widgets/cards/card_models.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 final filteredCountsProvider = StreamProvider.family<int, Map<String, String>>((ref, args) {
@@ -71,12 +74,12 @@ final recentActivityProvider =
 
   Query<Map<String, dynamic>> projectsQuery = FirebaseFirestore.instance
       .collection('projects')
-      .orderBy('createdAt', descending: true)
+      .orderBy('startDate', descending: true)
       .limit(10);
 
   Query<Map<String, dynamic>> tasksQuery = FirebaseFirestore.instance
       .collection('tasks')
-      .orderBy('updatedAt', descending: true)
+      .orderBy('createdAt', descending: true)
       .limit(10);
 
   // Role-based filtering:
@@ -137,7 +140,7 @@ final recentActivityProvider =
             'title': (data['name'] ?? data['title'] ?? 'Project').toString(),
             'subtitle': subtitle,
             'status': (data['status'] ?? 'Active').toString(),
-            'createdAt': _toDate(data['updatedAt'] ?? data['createdAt']),
+            'createdAt': _toDate(data['startDate']),
           };
         }).toList(),
       );
@@ -191,7 +194,7 @@ final recentActivityProvider =
                 (data['title'] ?? 'Task').toString(),
             'subtitle': subtitle,
             'status': (data['status'] ?? 'In Progress').toString(),
-            'createdAt': _toDate(data['updatedAt'] ?? data['createdAt']),
+            'createdAt': _toDate(data['createdAt']),
           };
         }).toList(),
       );
@@ -361,18 +364,16 @@ class UnifiedDashboardScreen extends ConsumerWidget {
         children: [
           _buildWelcomeSection(context, role),
           const SizedBox(height: 24),
-          _buildStatsGrid(
+          _buildStatsCarousel(
             context,
-            role,
-            crossAxisCount: 2,
             leadsCount: leadsCount,
             projectsCount: projectsCount,
             tasksCount: tasksCount,
           ),
           const SizedBox(height: 24),
-          _buildRecentActivity(context, role, activities: activities),
-          const SizedBox(height: 24),
           _buildQuickActions(context, role),
+          const SizedBox(height: 24),
+          _buildRecentActivity(context, role, activities: activities),
         ],
       ),
     );
@@ -393,10 +394,8 @@ class UnifiedDashboardScreen extends ConsumerWidget {
         children: [
           _buildWelcomeSection(context, role),
           const SizedBox(height: 24),
-          _buildStatsGrid(
+          _buildStatsCarousel(
             context,
-            role,
-            crossAxisCount: 3,
             leadsCount: leadsCount,
             projectsCount: projectsCount,
             tasksCount: tasksCount,
@@ -405,6 +404,8 @@ class UnifiedDashboardScreen extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Expanded(child: _buildQuickActions(context, role)),
+              const SizedBox(width: 16),
               Expanded(
                 flex: 2,
                 child: _buildRecentActivity(
@@ -413,8 +414,6 @@ class UnifiedDashboardScreen extends ConsumerWidget {
                   activities: activities,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(child: _buildQuickActions(context, role)),
             ],
           ),
         ],
@@ -437,10 +436,8 @@ class UnifiedDashboardScreen extends ConsumerWidget {
         children: [
           _buildWelcomeSection(context, role),
           const SizedBox(height: 32),
-          _buildStatsGrid(
+          _buildStatsCarousel(
             context,
-            role,
-            crossAxisCount: 4,
             leadsCount: leadsCount,
             projectsCount: projectsCount,
             tasksCount: tasksCount,
@@ -450,20 +447,20 @@ class UnifiedDashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                flex: 2,
-                child: _buildRecentActivity(
-                  context,
-                  role,
-                  activities: activities,
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
                 child: Column(
                   children: [
                     _buildQuickActions(context, role),
                     if (role == 'admin') ...[const SizedBox(height: 24)],
                   ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 2,
+                child: _buildRecentActivity(
+                  context,
+                  role,
+                  activities: activities,
                 ),
               ),
             ],
@@ -493,42 +490,50 @@ class UnifiedDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGrid(
-    BuildContext context,
-    String role, {
-    required int crossAxisCount,
+  Widget _buildStatsCarousel(
+    BuildContext context, {
     required int? leadsCount,
     required int? projectsCount,
     required int? tasksCount,
   }) {
-    final stats = _getStatsForRole(
-      context,
-      role,
-      leadsCount: leadsCount,
-      projectsCount: projectsCount,
-      tasksCount: tasksCount,
-    );
+    final cardWidth = ResponsiveCardSize.getCardWidth(context);
+    final cardHeight = ResponsiveCardSize.getCardHeight(context);
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 1.5,
+    // Create glassmorphic cards for each stat
+    final cards = [
+      GlassmorphicCard(
+        title: 'Leads',
+        count: leadsCount?.toString() ?? '—',
+        icon: Icons.person_add_outlined,
+        color: AppColors.sales,
+        width: cardWidth,
+        height: cardHeight,
+        onTap: () => GoRouter.of(context).go('/leads'),
       ),
-      itemCount: stats.length,
-      itemBuilder: (context, index) {
-        final stat = stats[index];
-        return _DashboardCard(
-          title: stat.title,
-          count: stat.count,
-          icon: stat.icon,
-          color: stat.color,
-          //onTap: stat.onTap,
-        );
-      },
+      GlassmorphicCard(
+        title: 'Projects',
+        count: projectsCount?.toString() ?? '—',
+        icon: Icons.folder_outlined,
+        color: AppColors.primary,
+        width: cardWidth,
+        height: cardHeight,
+        onTap: () => GoRouter.of(context).go('/projects'),
+      ),
+      GlassmorphicCard(
+        title: 'Tasks',
+        count: tasksCount?.toString() ?? '—',
+        icon: Icons.task_outlined,
+        color: AppColors.warning,
+        width: cardWidth,
+        height: cardHeight,
+        onTap: () => GoRouter.of(context).go('/tasks'),
+      ),
+    ];
+
+    return HorizontalCardList(
+      cards: cards,
+      cardHeight: cardHeight + 30, // Add extra height to prevent overflow
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 
@@ -537,9 +542,38 @@ class UnifiedDashboardScreen extends ConsumerWidget {
     String role, {
     required List<_ActivityItem> activities,
   }) {
-    return Card(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.6),
+            isDark
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.white.withValues(alpha: 0.3),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+            spreadRadius: -5,
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -548,17 +582,40 @@ class UnifiedDashboardScreen extends ConsumerWidget {
               children: [
                 Text(
                   'Recent Activity',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                TextButton(onPressed: () {}, child: const Text('View All')),
+                TextButton(
+                  onPressed: () {},
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                  ),
+                  child: const Text('View All'),
+                ),
               ],
             ),
             const SizedBox(height: 16),
             if (activities.isEmpty)
-              const Center(
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text('No recent activity'),
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.inbox_outlined,
+                        size: 48,
+                        color: Colors.grey.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No recent activity',
+                        style: TextStyle(
+                          color: Colors.grey.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               )
             else
@@ -566,17 +623,36 @@ class UnifiedDashboardScreen extends ConsumerWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: activities.length,
-                separatorBuilder: (context, index) => const Divider(height: 24),
+                separatorBuilder: (context, index) => Divider(
+                  height: 24,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.grey.withValues(alpha: 0.2),
+                ),
                 itemBuilder: (context, index) {
                   final activity = activities[index];
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Container(
-                      width: 40,
-                      height: 40,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        color: activity.color.withAlpha((0.1 * 255).round()),
-                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            activity.color.withValues(alpha: 0.2),
+                            activity.color.withValues(alpha: 0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: activity.color.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Icon(
                         activity.icon,
@@ -584,12 +660,26 @@ class UnifiedDashboardScreen extends ConsumerWidget {
                         size: 20,
                       ),
                     ),
-                    title: Text(activity.title),
+                    title: Text(
+                      activity.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
-                        Text(activity.subtitle),
+                        Text(
+                          activity.subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.6)
+                                : Colors.black.withValues(alpha: 0.6),
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -602,7 +692,10 @@ class UnifiedDashboardScreen extends ConsumerWidget {
                             const SizedBox(width: 12),
                             Text(
                               activity.time,
-                              style: Theme.of(context).textTheme.bodySmall,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.withValues(alpha: 0.7),
+                              ),
                             ),
                           ],
                         ),
@@ -620,42 +713,108 @@ class UnifiedDashboardScreen extends ConsumerWidget {
 
   Widget _buildQuickActions(BuildContext context, String role) {
     final actions = _getActionsForRole(context, role);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.6),
+            isDark
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.white.withValues(alpha: 0.3),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+            spreadRadius: -5,
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 16),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: actions.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final action = actions[index];
                 return InkWell(
                   onTap: action.onTap,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.white.withValues(alpha: 0.7),
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.02)
+                              : Colors.white.withValues(alpha: 0.4),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.5),
+                        width: 1.0,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 40,
-                          height: 40,
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
-                            color: action.color.withAlpha((0.1 * 255).round()),
-                            borderRadius: BorderRadius.circular(8),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                action.color.withValues(alpha: 0.2),
+                                action.color.withValues(alpha: 0.1),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: action.color.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Icon(
                             action.icon,
@@ -663,17 +822,22 @@ class UnifiedDashboardScreen extends ConsumerWidget {
                             size: 20,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Text(
                             action.title,
-                            style: Theme.of(context).textTheme.titleMedium,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.arrow_forward_ios,
-                          size: 16,
-                          color: AppColors.textSecondary,
+                          size: 14,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.4)
+                              : Colors.black.withValues(alpha: 0.3),
                         ),
                       ],
                     ),
@@ -733,38 +897,6 @@ class UnifiedDashboardScreen extends ConsumerWidget {
     }
   }
 
-  List<_StatItem> _getStatsForRole(
-    BuildContext context,
-    String role, {
-    required int? leadsCount,
-    required int? projectsCount,
-    required int? tasksCount,
-  }) {
-    return [
-      _StatItem(
-        title: 'Leads',
-        count: (leadsCount?.toString() ?? '—'),
-        icon: Icons.person_add_outlined,
-        color: AppColors.sales,
-        // onTap: () => GoRouter.of(context).go('/leads'),
-      ),
-      _StatItem(
-        title: 'Projects',
-        count: (projectsCount?.toString() ?? '—'),
-        icon: Icons.folder_outlined,
-        color: AppColors.primary,
-        // onTap: () => GoRouter.of(context).go('/projects'),
-      ),
-      _StatItem(
-        title: 'Tasks',
-        count: (tasksCount?.toString() ?? '—'),
-        icon: Icons.task_outlined,
-        color: AppColors.warning,
-        // onTap: () => GoRouter.of(context).go('/tasks'),
-      ),
-    ];
-  }
-
   List<_QuickAction> _getActionsForRole(BuildContext context, String role) {
     final allActions = [
       _QuickAction(
@@ -820,22 +952,6 @@ class UnifiedDashboardScreen extends ConsumerWidget {
 }
 
 // Helper Classes
-class _StatItem {
-  final String title;
-  final String count;
-  final IconData icon;
-  final Color color;
-  //final VoidCallback? onTap;
-
-  _StatItem({
-    required this.title,
-    required this.count,
-    required this.icon,
-    required this.color,
-    //this.onTap,
-  });
-}
-
 class _ActivityItem {
   final String title;
   final String subtitle;
@@ -868,73 +984,3 @@ class _QuickAction {
   });
 }
 
-class _DashboardCard extends StatelessWidget {
-  final String title;
-  final String count;
-  final IconData icon;
-  final Color color;
-  //final VoidCallback? onTap;
-
-  const _DashboardCard({
-    required this.title,
-    required this.count,
-    required this.icon,
-    required this.color,
-    //this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      //onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withAlpha((0.1 * 255).round()),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                // if (onTap != null)
-                //   Icon(
-                //     Icons.arrow_forward_ios,
-                //     size: 16,
-                //     color: AppColors.textSecondary,
-                //   ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              count,
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

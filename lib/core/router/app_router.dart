@@ -7,6 +7,7 @@ import '../../features/dashboard/presentation/screens/unified_dashboard_screen.d
 import '../../features/leads/presentation/screens/lead_list_screen.dart';
 import '../../features/tasks/presentation/screen/task_lists_screen.dart';
 import '../../features/projects/presentation/screens/project_list_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/providers/auth_state.dart';
 import '../../features/admin/presentation/screen/admin_panel_screen.dart';
@@ -94,6 +95,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/user-management',
         name: 'user-management',
         builder: (ctx, state) => const UserManagementScreen(),
+      ),
+
+      // Profile
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
 
       // // Invoices

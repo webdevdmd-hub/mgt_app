@@ -60,16 +60,47 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             child: PopupMenuButton<String>(
               offset: const Offset(0, 50),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.3),
+                  width: 1,
+                ),
               ),
-              icon: CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primary,
-                child: Text(
-                  user?.name.substring(0, 1).toUpperCase() ?? 'U',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+              elevation: 8,
+              icon: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.9),
+                      AppColors.primary.withValues(alpha: 0.7),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: isDark ? 0.3 : 0.5),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    user?.name.substring(0, 1).toUpperCase() ?? 'U',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
@@ -81,14 +112,34 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     children: [
                       Text(
                         user?.name ?? 'User',
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         user?.email ?? '',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: isDark
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : Colors.black.withValues(alpha: 0.6),
+                        ),
                       ),
-                      const Divider(height: 16),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.grey.withValues(alpha: 0.3),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -96,13 +147,28 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   value: 'profile',
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.person_outline,
-                        size: 20,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.2),
+                              AppColors.primary.withValues(alpha: 0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.person_outline,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      const Text('Profile'),
+                      const Text('Profile', style: TextStyle(fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ),
@@ -110,30 +176,65 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   value: 'settings',
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.settings_outlined,
-                        size: 20,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.warning.withValues(alpha: 0.2),
+                              AppColors.warning.withValues(alpha: 0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          size: 18,
+                          color: AppColors.warning,
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      const Text('Settings'),
+                      const Text('Settings', style: TextStyle(fontWeight: FontWeight.w500)),
                     ],
                   ),
                 ),
-                const PopupMenuDivider(),
+                PopupMenuDivider(
+                  height: 1,
+                ),
                 PopupMenuItem(
                   value: 'logout',
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.logout,
-                        size: 20,
-                        color: AppColors.error,
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.error.withValues(alpha: 0.2),
+                              AppColors.error.withValues(alpha: 0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.logout,
+                          size: 18,
+                          color: AppColors.error,
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
+                      const Text(
                         'Logout',
-                        style: TextStyle(color: AppColors.error),
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -141,6 +242,9 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
               ],
               onSelected: (value) {
                 switch (value) {
+                  case 'profile':
+                    context.go('/profile');
+                    break;
                   case 'settings':
                     context.push('/settings');
                     break;

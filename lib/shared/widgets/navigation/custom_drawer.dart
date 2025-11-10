@@ -54,6 +54,12 @@ class CustomDrawer extends StatelessWidget {
                     label: 'Tasks',
                     route: '/tasks',
                   ),
+                  _buildNavItem(
+                    context,
+                    icon: Icons.person_outlined,
+                    label: 'Profile',
+                    route: '/profile',
+                  ),
                   // _buildNavItem(
                   //   context,
                   //   icon: Icons.receipt_long_outlined,

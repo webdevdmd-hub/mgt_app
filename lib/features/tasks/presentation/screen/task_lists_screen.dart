@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/widgets/app_bar/custom_app_bar.dart';
+import '../../../../shared/widgets/navigation/custom_drawer.dart';
 import '../../domain/entities/task_entity.dart';
 import '../providers/tasks_providers.dart';
 import 'create_tasks_screen.dart';
-import '../widgets/animated_list_item.dart';
 import '../widgets/task_card_widget.dart';
-import 'package:go_router/go_router.dart';
+
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
 
@@ -13,59 +15,34 @@ class TaskListScreen extends ConsumerStatefulWidget {
   ConsumerState<TaskListScreen> createState() => _TaskListScreenState();
 }
 
-class _TaskListScreenState extends ConsumerState<TaskListScreen> {
+class _TaskListScreenState extends ConsumerState<TaskListScreen>
+    with SingleTickerProviderStateMixin {
   String _query = '';
   String _filter = 'All'; // All, Today, Upcoming, Completed
   String? _moduleFilter;
   final TextEditingController _searchCtrl = TextEditingController();
-  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
-  List<TaskEntity> _listItems = [];
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _listItems = _applyFilters(ref.read(tasksProvider));
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _filter = ['All', 'Today', 'Upcoming', 'Completed'][_tabController.index];
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
-  void _onRemove(TaskEntity task) {
-    final index = _listItems.indexWhere((t) => t.id == task.id);
-    if (index != -1) {
-      // Remove the item from the local list and capture it.
-      final removedItem = _listItems.removeAt(index);
-      // Tell the AnimatedList to animate the removal, providing a builder
-      // that uses the captured 'removedItem'.
-      _listKey.currentState?.removeItem(
-        index,
-        (context, animation) => AnimatedListItem(
-          animation: animation,
-          child: TaskCardWidget(
-            task: removedItem,
-          ), // No onRemove needed for the animating widget
-        ),
-        duration: const Duration(milliseconds: 300),
-      );
-    }
-  }
-
-  Widget _buildAnimatedItem(
-    BuildContext context,
-    int index,
-    Animation<double> animation,
-  ) {
-    final task = _listItems[index];
-    return AnimatedListItem(
-      animation: animation,
-      child: TaskCardWidget(task: task, onRemove: _onRemove),
-    );
-  }
-
-  // Update type to TaskEntity
   List<TaskEntity> _applyFilters(List<TaskEntity> tasks) {
     var list = tasks;
 
@@ -105,7 +82,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       list = list.where((t) => t.status == TaskStatus.completed).toList();
     }
 
-    // IMPORTANT: Only show top-level tasks in the final list. Subtasks are handled by the TaskCardWidget.
+    // Only show top-level tasks
     list = list.where((t) => t.parentId == null).toList();
 
     list.sort((a, b) {
@@ -119,171 +96,290 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<List<TaskEntity>>(tasksProvider, (previous, current) {
-      final oldFiltered = _applyFilters(previous ?? []);
-      final newFiltered = _applyFilters(current);
-
-      // Find items to remove
-      final toRemove = oldFiltered.where((task) => !newFiltered.any((t) => t.id == task.id)).toList();
-      for (final task in toRemove) {
-        final index = _listItems.indexWhere((t) => t.id == task.id);
-        if (index != -1) {
-          final removedItem = _listItems.removeAt(index);
-          _listKey.currentState?.removeItem(
-            index,
-            (context, animation) => AnimatedListItem(
-              animation: animation,
-              child: TaskCardWidget(task: removedItem, onRemove: _onRemove),
-            ),
-          );
-        }
-      }
-
-      // Find items to add
-      final toAdd = newFiltered.where((task) => !_listItems.any((t) => t.id == task.id)).toList();
-      for (final task in toAdd) {
-        final index = newFiltered.indexWhere((t) => t.id == task.id);
-        if (index != -1) {
-          _listItems.insert(index, task);
-          _listKey.currentState?.insertItem(index);
-        }
-      }
-    });
-
-    // This watch is just to trigger a rebuild when filters change.
-    ref.watch(tasksProvider);
+    final tasks = ref.watch(tasksProvider);
+    final filteredTasks = _applyFilters(tasks);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: "Back to dashboard",
-          onPressed: () {
-            context.go('/dashboard');
-          },
-        ),
-        title: const Text('Tasks'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(140),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      appBar: const CustomAppBar(title: 'Tasks'),
+      drawer: const CustomDrawer(),
+      body: Column(
+        children: [
+          // Glassmorphic Filter Section
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.6),
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : Colors.white.withValues(alpha: 0.3),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: isDark ? 0.15 : 0.4),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                  spreadRadius: -5,
+                ),
+              ],
+            ),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Search',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _query.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    setState(() {
-                                      _query = '';
-                                      _listItems = _applyFilters(ref.read(tasksProvider));
-                                    });
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Theme.of(context).cardColor,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onChanged: (v) => setState(() {
-                          _query = v.trim();
-                          _listItems = _applyFilters(ref.read(tasksProvider));
-                        }),
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.white.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: isDark ? 0.1 : 0.5),
+                        width: 1.0,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: ['All', 'Today', 'Upcoming', 'Completed'].map((
-                    label,
-                  ) {
-                    final active = _filter == label;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: active
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).cardColor,
-                            foregroundColor: active ? Colors.white : null,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: () => setState(() {
-                            _filter = label;
-                            _listItems = _applyFilters(ref.read(tasksProvider));
-                          }),
-                          child: Text(label),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Search tasks...',
+                        hintStyle: TextStyle(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.4)
+                              : Colors.black.withValues(alpha: 0.4),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: AppColors.primary,
+                        ),
+                        suffixIcon: _query.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _query = '');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
                       ),
-                    );
-                  }).toList(),
+                      onChanged: (v) => setState(() => _query = v.trim()),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: ['All', 'lead', 'project'].map((label) {
-                    final isSelected = (_moduleFilter ?? 'All') == label;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: ChoiceChip(
-                        label: Text(label[0].toUpperCase() + label.substring(1)),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            _moduleFilter = selected ? label : null;
-                            if (_moduleFilter == 'All') _moduleFilter = null;
-                             _listItems = _applyFilters(ref.read(tasksProvider));
-                          });
-                        },
+
+                // Tab Bar Filters
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary,
+                          AppColors.primary.withValues(alpha: 0.8),
+                        ],
                       ),
-                    );
-                  }).toList(),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: isDark
+                        ? Colors.white.withValues(alpha: 0.6)
+                        : Colors.black.withValues(alpha: 0.6),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                    tabs: const [
+                      Tab(text: 'All'),
+                      Tab(text: 'Today'),
+                      Tab(text: 'Upcoming'),
+                      Tab(text: 'Completed'),
+                    ],
+                  ),
+                ),
+
+                // Module Filter Chips
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Type:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : Colors.black.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildModuleChip('All', null, isDark),
+                            _buildModuleChip('Lead', 'lead', isDark),
+                            _buildModuleChip('Project', 'project', isDark),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(tasksProvider.notifier).fetchTasks(),
-        child: _listItems.isEmpty
-            ? ListView(
-                children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                  const Center(child: Text('No tasks found')),
-                ],
-              )
-            : AnimatedList(
-                key: _listKey,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
+
+          // Task Count
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${filteredTasks.length} ${filteredTasks.length == 1 ? 'Task' : 'Tasks'}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : Colors.black.withValues(alpha: 0.7),
+                  ),
                 ),
-                initialItemCount: _listItems.length,
-                itemBuilder: (ctx, idx, animation) =>
-                    _buildAnimatedItem(context, idx, animation),
-              ),
+              ],
+            ),
+          ),
+
+          // Task List
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => ref.read(tasksProvider.notifier).fetchTasks(),
+              child: filteredTasks.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.task_alt,
+                            size: 64,
+                            color: Colors.grey.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No tasks found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: filteredTasks.length,
+                      itemBuilder: (context, index) {
+                        final task = filteredTasks[index];
+                        return TaskCardWidget(task: task);
+                      },
+                    ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const CreateTaskScreen())),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CreateTaskScreen()),
+        ),
         icon: const Icon(Icons.add),
-        label: const Text('Task'),
+        label: const Text('New Task'),
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+      ),
+    );
+  }
+
+  Widget _buildModuleChip(String label, String? value, bool isDark) {
+    final isSelected = (_moduleFilter ?? 'All') == (value ?? 'All');
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _moduleFilter = value;
+        });
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.2),
+                    AppColors.primary.withValues(alpha: 0.1),
+                  ],
+                )
+              : null,
+          color: !isSelected
+              ? (isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey.withValues(alpha: 0.15))
+              : null,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected
+                ? AppColors.primary
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.7)
+                    : Colors.black.withValues(alpha: 0.7)),
+          ),
+        ),
       ),
     );
   }
