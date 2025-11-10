@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mgt_app/shared/widgets/responsive/responsive_builder.dart';
-import 'package:go_router/go_router.dart'; // add this
+import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -25,22 +26,68 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isSubmitting = true);
 
-    await Future.delayed(const Duration(seconds: 2)); // simulate network call
+    final messenger = ScaffoldMessenger.of(context);
+    final email = _emailCtrl.text.trim();
 
-    setState(() => _isSubmitting = false);
+    try {
+      // Send password reset email using Firebase Auth
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-    if (!mounted) return;
+      setState(() => _isSubmitting = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'If this email is registered, a reset link has been sent.',
+      if (!mounted) return;
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Password reset email sent! Check your inbox.',
+          ),
+          backgroundColor: Colors.green,
         ),
-      ),
-    );
+      );
 
-    // Redirect to login (works on Web too)
-    context.go('/login'); // was: Navigator.of(context).pop();
+      // Redirect to login after successful email send
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      context.go('/login');
+    } on FirebaseAuthException catch (e) {
+      setState(() => _isSubmitting = false);
+
+      if (!mounted) return;
+
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No account found with this email address.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address format.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = 'Failed to send reset email. Please try again.';
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+
+      if (!mounted) return;
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override

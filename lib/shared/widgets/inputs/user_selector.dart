@@ -170,7 +170,7 @@ class _UserSelectorState extends ConsumerState<UserSelector> {
 
         return DropdownButtonFormField<String>(
           key: ValueKey(widget.selectedUserId), // Force rebuild when selection changes
-          value: validatedValue,
+          initialValue: validatedValue,
           decoration: InputDecoration(
             labelText: widget.label ?? 'Assign To',
             border: const OutlineInputBorder(),
