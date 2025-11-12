@@ -7,12 +7,12 @@ import 'core/router/app_router.dart';
 import 'package:url_strategy/url_strategy.dart';
 
 void main() async {
-  // await SystemChrome.setPreferredOrientations([
-  //   DeviceOrientation.portraitUp,
-  //   DeviceOrientation.portraitDown,
-  //   DeviceOrientation.landscapeLeft,
-  //   DeviceOrientation.landscapeRight,
-  // ]);
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
 
   SystemChrome.setSystemUIOverlayStyle(
     SystemUiOverlayStyle(
