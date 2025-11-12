@@ -13,10 +13,13 @@ import '../../../../shared/widgets/cards/horizontal_card_scroller.dart';
 import '../../../../shared/widgets/cards/card_models.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-final filteredCountsProvider = StreamProvider.family<int, Map<String, String>>((ref, args) {
-  final collection = args['collection']!;
-  final role = args['role']!;
-  final uid = args['uid']!;
+typedef _CountsArgs = ({String collection, String role, String uid});
+typedef _ActivityArgs = ({String role, String uid});
+
+final filteredCountsProvider = StreamProvider.family<int, _CountsArgs>((ref, args) {
+  final collection = args.collection;
+  final role = args.role;
+  final uid = args.uid;
 
   Query query = FirebaseFirestore.instance.collection(collection);
 
@@ -62,10 +65,10 @@ DateTime? _toDate(dynamic v) {
 }
 
 final recentActivityProvider =
-    StreamProvider.family<List<Map<String, dynamic>>, Map<String, String>>(
+    StreamProvider.family<List<Map<String, dynamic>>, _ActivityArgs>(
         (ref, args) {
-  final role = args['role']!;
-  final uid = args['uid']!;
+  final role = args.role;
+  final uid = args.uid;
 
   Query<Map<String, dynamic>> leadsQuery = FirebaseFirestore.instance
       .collection('leads')
@@ -251,28 +254,28 @@ class UnifiedDashboardScreen extends ConsumerWidget {
     final role = user?.role ?? 'admin';
     final uid = user?.id ?? '';
 
-    final leadsCount = ref.watch(filteredCountsProvider({
-      'collection': 'leads',
-      'role': role,
-      'uid': uid,
-    })).maybeWhen(data: (v) => v, orElse: () => null);
+    final leadsCount = ref.watch(filteredCountsProvider((
+      collection: 'leads',
+      role: role,
+      uid: uid,
+    ))).maybeWhen(data: (v) => v, orElse: () => null);
 
-    final projectsCount = ref.watch(filteredCountsProvider({
-      'collection': 'projects',
-      'role': role,
-      'uid': uid,
-    })).maybeWhen(data: (v) => v, orElse: () => null);
+    final projectsCount = ref.watch(filteredCountsProvider((
+      collection: 'projects',
+      role: role,
+      uid: uid,
+    ))).maybeWhen(data: (v) => v, orElse: () => null);
 
-    final tasksCount = ref.watch(filteredCountsProvider({
-      'collection': 'tasks',
-      'role': role,
-      'uid': uid,
-    })).maybeWhen(data: (v) => v, orElse: () => null);
+    final tasksCount = ref.watch(filteredCountsProvider((
+      collection: 'tasks',
+      role: role,
+      uid: uid,
+    ))).maybeWhen(data: (v) => v, orElse: () => null);
 
-    final recentActivities = ref.watch(recentActivityProvider({
-      'role': role,
-      'uid': uid,
-    })).maybeWhen(
+    final recentActivities = ref.watch(recentActivityProvider((
+      role: role,
+      uid: uid,
+    ))).maybeWhen(
           data: (items) => items.map((m) {
             final type = (m['type'] as String?) ?? 'lead';
 
@@ -983,4 +986,3 @@ class _QuickAction {
     required this.onTap,
   });
 }
-
